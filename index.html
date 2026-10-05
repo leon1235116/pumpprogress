@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<link rel="manifest" href="manifest.json">
+<title>FitTrack</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b1120;color:#f8fafc}
+header{padding:28px 20px 16px;background:#111827;position:sticky;top:0;z-index:2}
+h1{margin:0;font-size:28px}.sub{color:#94a3b8;margin-top:5px}
+main{padding:18px 16px 90px;max-width:700px;margin:auto}.card{background:#111827;border:1px solid #243044;border-radius:18px;padding:18px;margin-bottom:14px}
+h2{font-size:18px;margin:0 0 14px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:#182235;border-radius:14px;padding:14px}.num{font-size:22px;font-weight:700}.label{font-size:12px;color:#94a3b8;margin-top:4px}
+button,input,select{font:inherit}button{border:0;border-radius:12px;padding:12px 15px;background:#2563eb;color:white;font-weight:600}
+button.secondary{background:#243044}button.danger{background:#b91c1c}.row{display:flex;gap:8px;flex-wrap:wrap}.field{display:grid;gap:6px;margin-bottom:10px}.field label{font-size:13px;color:#94a3b8}
+input,select{width:100%;padding:12px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:white}
+.exercise{padding:14px 0;border-top:1px solid #243044}.exercise:first-child{border-top:0}.exname{font-weight:650}.muted{color:#94a3b8;font-size:13px}.history-item{padding:12px 0;border-top:1px solid #243044}
+nav{position:fixed;bottom:0;left:0;right:0;background:#111827;border-top:1px solid #243044;display:flex;justify-content:space-around;padding:10px calc(10px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom))}
+nav button{background:transparent;color:#cbd5e1;padding:8px}
+nav button.active{color:#60a5fa}
+.hidden{display:none}.empty{color:#94a3b8;text-align:center;padding:20px}
+</style>
+</head>
+<body>
+<header><h1>FitTrack 💪</h1><div class="sub">Dein Trainingsfortschritt</div></header>
+<main>
+<section id="home">
+<div class="card"><h2>Übersicht</h2><div class="stats">
+<div class="stat"><div class="num" id="workouts">0</div><div class="label">Trainings</div></div>
+<div class="stat"><div class="num" id="volume">0</div><div class="label">Volumen kg</div></div>
+<div class="stat"><div class="num" id="prs">0</div><div class="label">PRs</div></div>
+</div></div>
+<div class="card"><h2>Training starten</h2><div class="row">
+<button onclick="startWorkout('Push')">Push</button><button onclick="startWorkout('Pull')">Pull</button>
+<button onclick="startWorkout('Beine')">Beine</button><button onclick="startWorkout('Full Body')">Full Body</button>
+</div></div>
+<div class="card"><h2>Letztes Training</h2><div id="last" class="empty">Noch kein Training gespeichert.</div></div>
+</section>
+
+<section id="workout" class="hidden">
+<div class="card"><h2 id="workoutTitle">Training</h2>
+<div id="exerciseList"></div>
+<button onclick="saveWorkout()">Training speichern</button>
+<button class="secondary" onclick="show('home')">Abbrechen</button>
+</div></section>
+
+<section id="history" class="hidden">
+<div class="card"><h2>Trainingshistorie</h2><div id="historyList"></div></div>
+</section>
+</main>
+<nav>
+<button id="navHome" class="active" onclick="show('home')">🏠<br>Home</button>
+<button id="navHistory" onclick="show('history')">📊<br>Historie</button>
+</nav>
+<script>
+const defaultExercises={Push:["Bankdrücken","Schulterdrücken","Seitheben","Trizepsdrücken"],Pull:["Klimmzüge","Rudern","Latzug","Bizepscurls"],Beine:["Kniebeugen","Beinpresse","Beinbeuger","Wadenheben"],"Full Body":["Kniebeugen","Bankdrücken","Rudern","Schulterdrücken"]};
+let workouts=JSON.parse(localStorage.getItem("fittrack_workouts")||"[]"), current=null;
+function save(){localStorage.setItem("fittrack_workouts",JSON.stringify(workouts))}
+function show(id){["home","workout","history"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));document.getElementById("navHome").classList.toggle("active",id==="home");document.getElementById("navHistory").classList.toggle("active",id==="history");if(id==="home")renderHome();if(id==="history")renderHistory()}
+function startWorkout(type){current={type,date:new Date().toISOString(),exercises:defaultExercises[type].map(name=>({name,weight:"",reps:"",sets:""}))};document.getElementById("workoutTitle").textContent=type+" Training";document.getElementById("exerciseList").innerHTML=current.exercises.map((e,i)=>`<div class="exercise"><div class="exname">${e.name}</div><div class="field"><label>Gewicht (kg)</label><input type="number" inputmode="decimal" id="w${i}" placeholder="z.B. 60"></div><div class="field"><label>Wiederholungen</label><input type="number" inputmode="numeric" id="r${i}" placeholder="z.B. 10"></div><div class="field"><label>Sätze</label><input type="number" inputmode="numeric" id="s${i}" placeholder="z.B. 3"></div></div>`).join("");show("workout")}
+function saveWorkout(){current.exercises.forEach((e,i)=>{e.weight=+document.getElementById("w"+i).value||0;e.reps=+document.getElementById("r"+i).value||0;e.sets=+document.getElementById("s"+i).value||0});workouts.unshift(current);save();current=null;show("home")}
+function totalVolume(){return workouts.reduce((a,w)=>a+w.exercises.reduce((b,e)=>b+(e.weight*e.reps*e.sets),0),0)}
+function prs(){let best={};workouts.forEach(w=>w.exercises.forEach(e=>{best[e.name]=Math.max(best[e.name]||0,e.weight||0)}));return Object.values(best).filter(x=>x>0).length}
+function renderHome(){document.getElementById("workouts").textContent=workouts.length;document.getElementById("volume").textContent=Math.round(totalVolume()).toLocaleString("de-DE");document.getElementById("prs").textContent=prs();let l=workouts[0];document.getElementById("last").innerHTML=l?`<b>${l.type}</b><br><span class="muted">${new Date(l.date).toLocaleString("de-DE")}</span>`:"Noch kein Training gespeichert."}
+function renderHistory(){let el=document.getElementById("historyList");el.innerHTML=workouts.length?workouts.map(w=>`<div class="history-item"><b>${w.type}</b> <span class="muted">${new Date(w.date).toLocaleDateString("de-DE")}</span><br><span class="muted">${w.exercises.filter(e=>e.weight||e.reps).map(e=>`${e.name}: ${e.weight}kg × ${e.reps} × ${e.sets}`).join(" · ")||"Keine Werte"}</span></div>`).join(""):`<div class="empty">Noch keine Trainings.</div>`}
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+renderHome();
+</script>
+</body></html>
